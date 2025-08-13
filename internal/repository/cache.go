@@ -48,6 +48,7 @@ func NewLRUCache(cap int, db *Storage) *LRUcache {
 	}
 
 	for _, order := range orders {
+
 		cache.push(order)
 	}
 	return cache

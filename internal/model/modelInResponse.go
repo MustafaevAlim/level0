@@ -43,7 +43,7 @@ type PaymentInResponse struct {
 }
 
 type ItemInResponse struct {
-	OrderUid    string `db:"order_uid"`
+	OrderUid    string `json:"order_uid"`
 	ChrtId      int    `json:"chrt_id" db:"chrt_id"`
 	TrackNumber string `json:"track_number" db:"track_number"`
 	Price       int    `json:"price" db:"price"`

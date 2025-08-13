@@ -184,12 +184,14 @@ func (s *Storage) SelectOrders(ctx context.Context, count int) ([]model.Order, e
 	if err != nil {
 		return nil, fmt.Errorf("ошибка в чтении заказов из БД: %w", err)
 	}
-	for _, order := range orders {
-		err = s.db.SelectContext(ctx, &order.Items, "SELECT * FROM items WHERE order_uid=$1", order.OrderUID)
+	for i := range orders {
+		err = s.db.SelectContext(ctx, &orders[i].Items, "SELECT * FROM items WHERE order_uid=$1", orders[i].OrderUID)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка в чтении товара заказа %s из БД: %w", order.OrderUID, err)
+			return nil, fmt.Errorf("ошибка в чтении товара заказа %s из БД: %w", orders[i].OrderUID, err)
 		}
+
 	}
+
 	return orders, nil
 }
 
