@@ -28,7 +28,7 @@ func (a *App) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	orders := make(chan model.Order, 100)
+	orders := make(chan model.OrderMsg, 100)
 	go func() {
 		defer wg.Done()
 		if err := a.Kafka.Consume(ctx, orders); err != nil {
@@ -39,9 +39,14 @@ func (a *App) Run(ctx context.Context) error {
 
 	go func() {
 		defer wg.Done()
-		for order := range orders {
-			if err := a.DB.AddOrder(ctx, order); err != nil {
+		for orderMsg := range orders {
+			if err := a.DB.AddOrder(ctx, orderMsg.Order); err != nil {
 				log.Printf("DB error: %v", err)
+				continue
+			}
+
+			if err := a.Kafka.Reader.CommitMessages(ctx, orderMsg.Msg); err != nil {
+				log.Printf("Не удалось закоммитить offset: %v", err)
 			}
 
 		}

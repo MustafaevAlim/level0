@@ -1,6 +1,15 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/segmentio/kafka-go"
+)
+
+type OrderMsg struct {
+	Msg   kafka.Message
+	Order Order
+}
 
 type Order struct {
 	OrderUID          string    `json:"order_uid" db:"order_uid"`

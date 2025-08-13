@@ -12,25 +12,26 @@ import (
 )
 
 type KafkaReader struct {
-	reader *kafka.Reader
+	Reader *kafka.Reader
 }
 
 func NewKafkaReader(brokers []string, topic string, groupId string) *KafkaReader {
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: brokers,
-		Topic:   topic,
-		GroupID: groupId,
+		Brokers:        brokers,
+		Topic:          topic,
+		GroupID:        groupId,
+		CommitInterval: 0,
 	})
-	return &KafkaReader{reader: reader}
+	return &KafkaReader{Reader: reader}
 }
 
-func (r *KafkaReader) Consume(ctx context.Context, ch chan model.Order) error {
+func (r *KafkaReader) Consume(ctx context.Context, ch chan model.OrderMsg) error {
 
-	defer r.reader.Close()
+	defer r.Reader.Close()
 	defer close(ch)
 
 	for {
-		msg, err := r.reader.ReadMessage(ctx)
+		msg, err := r.Reader.ReadMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				log.Println("Кафка: отмена контекста")
@@ -48,7 +49,7 @@ func (r *KafkaReader) Consume(ctx context.Context, ch chan model.Order) error {
 		log.Printf("Кафка: получен заказ с айди %s", data.OrderUID)
 
 		select {
-		case ch <- data:
+		case ch <- model.OrderMsg{Msg: msg, Order: data}:
 		case <-ctx.Done():
 			return ctx.Err()
 		}
