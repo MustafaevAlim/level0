@@ -2,25 +2,23 @@ package model
 
 import "time"
 
-type Order struct {
-	OrderUID          string    `json:"order_uid" db:"order_uid"`
-	TrackNumber       string    `json:"track_number" db:"track_number"`
-	Entry             string    `json:"entry" db:"entry"`
-	Locale            string    `json:"locale" db:"locale"`
-	InternalSignature string    `json:"internal_signature" db:"internal_signature"`
-	CustomerId        string    `json:"customer_id" db:"customer_id" `
-	DeliveryService   string    `json:"delivery_service" db:"delivery_service"`
-	ShardKey          string    `json:"shardkey" db:"shardkey"`
-	SmID              int       `json:"sm_id" db:"sm_id"`
-	CreatedAt         time.Time `json:"date_created" db:"date_created"`
-	OofShard          string    `json:"oof_shard" db:"oof_shard"`
-	Deliver           Delivery  `json:"delivery"`
-	Pay               Payment   `json:"payment"`
-	Items             []Item    `json:"items"`
+type OrderInResponse struct {
+	OrderUID          string             `json:"order_uid" db:"order_uid"`
+	TrackNumber       string             `json:"track_number" db:"track_number"`
+	Entry             string             `json:"entry" db:"entry"`
+	Locale            string             `json:"locale" db:"locale"`
+	InternalSignature string             `json:"internal_signature" db:"internal_signature"`
+	CustomerId        string             `json:"customer_id" db:"customer_id" `
+	DeliveryService   string             `json:"delivery_service" db:"delivery_service"`
+	SmID              int                `json:"sm_id" db:"sm_id"`
+	CreatedAt         time.Time          `json:"date_created" db:"date_created"`
+	Delivery          DeliveryInResponse `json:"delivery" db:"deliverys"`
+	Payment           PaymentInResponse  `json:"payment" db:"payments"`
+	Items             []ItemInResponse   `json:"items" db:"items"`
 }
 
-type Delivery struct {
-	OrderUid string `db:"order_uid"`
+type DeliveryInResponse struct {
+	OrderUid string `json:"order_uid" db:"order_uid"`
 	Name     string `json:"name" db:"name"`
 	Phone    string `json:"phone" db:"phone" `
 	Zip      string `json:"zip" db:"zip"`
@@ -30,8 +28,8 @@ type Delivery struct {
 	Email    string `json:"email" db:"email"`
 }
 
-type Payment struct {
-	OrderUid     string `db:"order_uid"`
+type PaymentInResponse struct {
+	OrderUid     string `json:"order_uid" db:"order_uid"`
 	Transaction  string `json:"transaction" db:"transaction"`
 	RequestId    string `json:"request_id" db:"request_id"`
 	Currency     string `json:"currency" db:"currency"`
@@ -44,7 +42,7 @@ type Payment struct {
 	CustomFee    int    `json:"custom_fee" db:"custom_fee"`
 }
 
-type Item struct {
+type ItemInResponse struct {
 	OrderUid    string `db:"order_uid"`
 	ChrtId      int    `json:"chrt_id" db:"chrt_id"`
 	TrackNumber string `json:"track_number" db:"track_number"`

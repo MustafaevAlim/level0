@@ -1,13 +1,17 @@
 package main
 
 import (
+	"Level0/internal/api"
+	"Level0/internal/api/controllers"
 	"Level0/internal/app"
+	"Level0/internal/repository"
 	"context"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/joho/godotenv"
-	"github.com/segmentio/kafka-go"
 )
 
 // Загрузка переменных окружения
@@ -18,25 +22,22 @@ func init() {
 }
 
 func main() {
-	data, err := os.ReadFile("model.json")
+	// go scripts.WriteInKafka()
+
+	db := repository.Init()
+	cache := repository.NewLRUCache(100, db)
+	kafka := repository.NewKafkaReader([]string{"localhost:9092"}, "orders-topic", "grp1")
+	ctrl := controllers.Controller{DB: db, Cache: cache}
+	mux := api.RouteController(&ctrl)
+
+	a := app.NewApp(db, cache, kafka, mux)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	err := a.Run(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
-
-	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "orders-topic",
-	})
-	defer writer.Close()
-
-	err = writer.WriteMessages(context.Background(), kafka.Message{
-		Value: data,
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	a := app.NewApp()
-	a.Run()
 
 }

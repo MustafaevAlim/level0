@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Поиск заказа</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+        label, input, button {
+            font-size: 16px;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            background-color: #f2f2f2;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Поиск информации о заказе</h1>
+    <label for="orderId">Введите ID заказа:</label>
+    <input type="text" id="orderId" />
+    <button id="searchBtn">Найти</button>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('searchBtn').addEventListener('click', function() {
+            const orderId = document.getElementById('orderId').value.trim();
+            const resultDiv = document.getElementById('result');
+            if (!orderId) {
+                resultDiv.textContent = "Пожалуйста, введите ID заказа.";
+                return;
+            }
+
+            resultDiv.textContent = "Загрузка...";
+
+            
+            fetch('http://localhost:8082/order/' + encodeURIComponent(orderId))
+                .then(response => {
+                    if (response.status === 404) {
+                        throw new Error("Заказ не найден");
+                    } else if (!response.ok) {
+                        throw new Error("Ошибка сервера: " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(err => {
+                    resultDiv.textContent = err.message;
+                });
+        });
+    </script>
+</body>
+</html>

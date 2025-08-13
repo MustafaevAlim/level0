@@ -4,13 +4,13 @@ import (
 	"Level0/internal/config"
 	"Level0/internal/model"
 	"context"
-	"encoding/json"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/segmentio/kafka-go"
 )
 
 type Storage struct {
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS payments (
 	id SERIAL PRIMARY KEY,
 	order_uid TEXT UNIQUE NOT NULL,
+	transaction TEXT NOT NULL,
 	request_id TEXT,
 	currency TEXT NOT NULL,
 	provider TEXT NOT NULL,
@@ -94,90 +95,138 @@ func Init() *Storage {
 	return &Storage{db: db}
 }
 
-func (s *Storage) AddOrder(order model.Order) error {
+func (s *Storage) Close() {
+	s.db.Close()
+}
 
-	tx, err := s.db.Beginx()
+func (s *Storage) AddOrder(ctx context.Context, order model.Order) error {
+
+	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
-		log.Fatalln(err)
-		return err
+		return fmt.Errorf("ошибка в записи заказа в БД: %w", err)
 	}
+	defer tx.Rollback()
 
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback()
-			log.Fatalln(p)
-			panic(p)
-		}
-	}()
-
-	_, err = tx.NamedExec(
+	_, err = tx.NamedExecContext(
+		ctx,
 		`INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard)
 		VALUES (:order_uid, :track_number, :entry, :locale, :internal_signature, :customer_id, :delivery_service, :shardkey, :sm_id, :date_created, :oof_shard)`,
 		&order)
 	if err != nil {
-		tx.Rollback()
-		log.Fatalln(err)
-		return err
+		return fmt.Errorf("ошибка в записи заказа в БД: %w", err)
 	}
-	order.Deliver.OrderUid = order.OrderUID
-	fmt.Println(order.Deliver)
-	_, err = tx.NamedExec(`INSERT INTO deliverys (order_uid, name, phone, zip, city, address, region, email)
-							VALUES (:order_uid, :name, :phone, :zip, :city, :address, :region, :email)`, &order.Deliver)
+
+	order.Delivery.OrderUid = order.OrderUID
+	_, err = tx.NamedExecContext(
+		ctx,
+		`INSERT INTO deliverys (order_uid, name, phone, zip, city, address, region, email)
+		VALUES (:order_uid, :name, :phone, :zip, :city, :address, :region, :email)`,
+		&order.Delivery)
 	if err != nil {
-		tx.Rollback()
-		log.Fatalln(err)
-		return err
+		return fmt.Errorf("ошибка в записи заказа в БД: %w", err)
 	}
-	order.Pay.OrderUid = order.OrderUID
-	fmt.Println(order.Pay)
-	_, err = tx.NamedExec(`INSERT INTO payments (order_uid, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
-							VALUES (:order_uid, :request_id, :currency, :provider, :amount, :payment_dt, :bank, :delivery_cost, :goods_total, :custom_fee)`, &order.Pay)
+
+	order.Payment.OrderUid = order.OrderUID
+	_, err = tx.NamedExecContext(
+		ctx,
+		`INSERT INTO payments (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank, delivery_cost, goods_total, custom_fee)
+		VALUES (:order_uid, :transaction, :request_id, :currency, :provider, :amount, :payment_dt, :bank, :delivery_cost, :goods_total, :custom_fee)`,
+		&order.Payment)
 	if err != nil {
-		tx.Rollback()
-		log.Fatalln(err)
-		return err
+		return fmt.Errorf("ошибка в записи заказа в БД: %w", err)
+
 	}
+
 	for i := range order.Items {
-
 		order.Items[i].OrderUid = order.OrderUID
-
-		_, err = tx.NamedExec(`INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
-							VALUES (:order_uid, :chrt_id, :track_number, :price, :rid, :name, :sale, :size, :total_price, :nm_id, :brand, :status)`, &order.Items[i])
+		_, err = tx.NamedExecContext(
+			ctx,
+			`INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
+			VALUES (:order_uid, :chrt_id, :track_number, :price, :rid, :name, :sale, :size, :total_price, :nm_id, :brand, :status)`,
+			&order.Items[i])
 		if err != nil {
-			tx.Rollback()
-			log.Fatalln(err)
-			return err
+			return fmt.Errorf("ошибка в записи заказа в БД: %w", err)
 		}
 
 	}
+	log.Printf("Добавлен заказ с айди: %s", order.OrderUID)
 	return tx.Commit()
 
 }
 
-func ReadFromKafka(ch chan model.Order) {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "orders-topic",
-	})
+func (s *Storage) SelectOrders(ctx context.Context, count int) ([]model.Order, error) {
+	orders := make([]model.Order, 0, count)
+	err := s.db.SelectContext(
+		ctx,
+		&orders,
+		`SELECT 
+        o.order_uid, o.track_number, o.entry, o.locale, o.internal_signature, o.customer_id,
+        o.delivery_service, o.shardkey, o.sm_id, o.date_created, o.oof_shard,
 
-	defer reader.Close()
+        d.name AS "deliverys.name", d.phone AS "deliverys.phone", d.zip AS "deliverys.zip",
+        d.city AS "deliverys.city", d.address AS "deliverys.address", d.region AS "deliverys.region",
+        d.email AS "deliverys.email",
 
-	for {
-		msg, err := reader.ReadMessage(context.Background())
-		if err != nil {
-			log.Fatalln("Ошибка при получении сообщения: ", err)
-			break
-		}
-		var data model.Order
-		err = json.Unmarshal(msg.Value, &data)
-
-		if err != nil {
-			log.Fatalln("Ошибка в десериализации сообщения: ", err)
-			break
-		}
-
-		ch <- data
-
+        p.request_id AS "payments.request_id", p.transaction AS "payments.transaction",
+        p.currency AS "payments.currency", p.provider AS "payments.provider", p.amount AS "payments.amount",
+        p.payment_dt AS "payments.payment_dt", p.bank AS "payments.bank", p.delivery_cost AS "payments.delivery_cost",
+        p.goods_total AS "payments.goods_total", p.custom_fee AS "payments.custom_fee"
+		FROM orders o
+		LEFT JOIN deliverys d ON o.order_uid = d.order_uid
+		LEFT JOIN payments p ON o.order_uid = p.order_uid
+		ORDER BY date_created DESC LIMIT $1`,
+		count,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
 	}
 
+	if err != nil {
+		return nil, fmt.Errorf("ошибка в чтении заказов из БД: %w", err)
+	}
+	for _, order := range orders {
+		err = s.db.SelectContext(ctx, &order.Items, "SELECT * FROM items WHERE order_uid=$1", order.OrderUID)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка в чтении товара заказа %s из БД: %w", order.OrderUID, err)
+		}
+	}
+	return orders, nil
+}
+
+func (s *Storage) GetOrder(ctx context.Context, uid string) (*model.Order, error) {
+	var order model.Order
+	err := s.db.GetContext(
+		ctx,
+		&order,
+		`
+    	SELECT 
+        o.order_uid, o.track_number, o.entry, o.locale, o.internal_signature, o.customer_id,
+        o.delivery_service, o.shardkey, o.sm_id, o.date_created, o.oof_shard,
+
+        d.name AS "deliverys.name", d.phone AS "deliverys.phone", d.zip AS "deliverys.zip",
+        d.city AS "deliverys.city", d.address AS "deliverys.address", d.region AS "deliverys.region",
+        d.email AS "deliverys.email",
+
+        p.request_id AS "payments.request_id", p.transaction AS "payments.transaction",
+        p.currency AS "payments.currency", p.provider AS "payments.provider", p.amount AS "payments.amount",
+        p.payment_dt AS "payments.payment_dt", p.bank AS "payments.bank", p.delivery_cost AS "payments.delivery_cost",
+        p.goods_total AS "payments.goods_total", p.custom_fee AS "payments.custom_fee"
+		FROM orders o
+		LEFT JOIN deliverys d ON o.order_uid = d.order_uid
+		LEFT JOIN payments p ON o.order_uid = p.order_uid
+		WHERE o.order_uid = $1`,
+		uid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ошибка в чтении заказа из БД: %w", err)
+	}
+	var items []model.Item
+	err = s.db.SelectContext(ctx, &items, "SELECT * FROM items WHERE order_uid = $1", uid)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка в чтении заказа из БД: %w", err)
+	}
+	order.Items = items
+	return &order, nil
 }

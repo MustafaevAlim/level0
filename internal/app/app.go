@@ -3,28 +3,68 @@ package app
 import (
 	"Level0/internal/model"
 	"Level0/internal/repository"
+	"context"
 	"log"
+	"net/http"
+	"sync"
 )
 
 type App struct {
-	DB *repository.Storage
+	DB     *repository.Storage
+	Cache  *repository.LRUcache
+	Kafka  *repository.KafkaReader
+	Router http.Handler
 }
 
-func NewApp() App {
-	db := repository.Init()
+func NewApp(db *repository.Storage, cache *repository.LRUcache, kafka *repository.KafkaReader, router http.Handler) *App {
 
-	return App{DB: db}
+	return &App{DB: db, Cache: cache, Kafka: kafka, Router: router}
 }
 
-func (a *App) Run() {
-	ch := make(chan model.Order)
-	go repository.ReadFromKafka(ch)
+func (a *App) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	orders := make(chan model.Order, 100)
 	go func() {
-		for order := range ch {
-			log.Printf("Получен заказ %s из Kafka", order.OrderUID)
-			a.DB.AddOrder(order)
+		defer wg.Done()
+		if err := a.Kafka.Consume(ctx, orders); err != nil {
+			log.Printf("Kafka error: %v", err)
+			cancel()
 		}
 	}()
 
-	select {}
+	go func() {
+		defer wg.Done()
+		for order := range orders {
+			if err := a.DB.AddOrder(ctx, order); err != nil {
+				log.Printf("DB error: %v", err)
+			}
+
+		}
+	}()
+
+	server := &http.Server{
+		Handler: a.Router,
+		Addr:    ":8082",
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("HTTP error: %v", err)
+			cancel()
+		}
+	}()
+	<-ctx.Done()
+
+	log.Println("Завершение программы...")
+	wg.Wait()
+
+	server.Shutdown(context.Background())
+	a.DB.Close()
+	return nil
+
 }
