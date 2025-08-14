@@ -6,6 +6,7 @@ type RepositoryConfig struct {
 	User           string
 	Password       string
 	RepositoryName string
+	Host           string
 }
 
 type Config struct {
@@ -18,6 +19,7 @@ func New() *Config {
 			User:           getEnv("POSTGRES_USER", "postgres"),
 			Password:       getEnv("POSTGRES_PASSWORD", "postgres"),
 			RepositoryName: getEnv("POSTGRES_DB", "postgres"),
+			Host:           getEnv("DB_HOST", "postgres"),
 		}}
 }
 

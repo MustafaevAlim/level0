@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 func Init() *Storage {
 	conf := config.New()
-	dsn := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", conf.Repository.User, conf.Repository.Password, conf.Repository.RepositoryName)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s sslmode=disable", conf.Repository.Host, conf.Repository.User, conf.Repository.Password, conf.Repository.RepositoryName)
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		log.Fatalln(err)

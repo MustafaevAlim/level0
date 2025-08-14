@@ -5,6 +5,7 @@ import (
 	"Level0/internal/api/controllers"
 	"Level0/internal/app"
 	"Level0/internal/repository"
+	"Level0/scripts"
 	"context"
 	"log"
 	"os"
@@ -22,11 +23,11 @@ func init() {
 }
 
 func main() {
-	// go scripts.WriteInKafka()
+	go scripts.WriteInKafka()
 
 	db := repository.Init()
 	cache := repository.NewLRUCache(100, db)
-	kafka := repository.NewKafkaReader([]string{"localhost:9092"}, "orders-topic", "grp1")
+	kafka := repository.NewKafkaReader([]string{"kafka:9092"}, "orders-topic", "grp1")
 	ctrl := controllers.Controller{DB: db, Cache: cache}
 	mux := api.RouteController(&ctrl)
 

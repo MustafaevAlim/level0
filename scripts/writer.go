@@ -131,7 +131,7 @@ func generateRandomOrder() Order {
 
 func WriteInKafka() {
 	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{"kafka:9092"},
 		Topic:   "orders-topic",
 	})
 	defer writer.Close()
@@ -147,10 +147,11 @@ func WriteInKafka() {
 			Value: data,
 		})
 		if err != nil {
-			log.Fatalln("Ошибка в отправке данных: ", err)
-			break
+			log.Println("Kafka недоступна, повтор через 5 секунд:", err)
+			time.Sleep(5 * time.Second)
+			continue
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(rand.Intn(60)) * time.Second)
 
 	}
 }

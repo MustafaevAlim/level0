@@ -41,7 +41,7 @@
             resultDiv.textContent = "Загрузка...";
 
             
-            fetch('http://localhost:8082/order/' + encodeURIComponent(orderId))
+            fetch('http://0.0.0.0:8082/order/' + encodeURIComponent(orderId))
                 .then(response => {
                     if (response.status === 404) {
                         throw new Error("Заказ не найден");

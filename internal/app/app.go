@@ -47,6 +47,7 @@ func (a *App) Run(ctx context.Context) error {
 
 			if err := a.Kafka.Reader.CommitMessages(ctx, orderMsg.Msg); err != nil {
 				log.Printf("Не удалось закоммитить offset: %v", err)
+
 			}
 
 		}
