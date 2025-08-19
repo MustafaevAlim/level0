@@ -1,0 +1,59 @@
+Микросервис для обработки заказов: получение из Kafka, хранение в PostgreSQL и быстрый доступ через LRU-кеш. В комплекте есть пример фронтенда на HTML+JS.
+## Возможности
+ - Чтение заказов из Kafka
+ - Сохраняет структуру заказа с платежом, доставкой и товарами
+ - Быстрый in-memory LRU-кеш
+ - HTTP API для получения заказа по ID
+ - Простой веб-интерфейс
+
+## Технологии
+ - Golang
+ - Kafka (segmentio/kafka-go)
+ - PostgreSQL (sqlx)
+ - Docker, Docker Compose
+ - HTML+JS (frontend)
+
+## Быстрый старт
+  ### Клонирование
+    git clone https://github.com/MustafaevAlim/level0.git
+    cd level0
+
+  ### Настрой .env
+Создать .env на основе .env_example и заполнить значения:
+    
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=yourpassword
+    POSTGRES_DB=ordersdb
+    KAFKA_BROKERS=localhost:9092
+    KAFKA_TOPIC=orders-topic
+    KAFKA_GROUP=orders-group
+    CACHE_SIZE=100
+    HTTP_PORT=8082
+
+   ### Запуск через Docker Compose
+    docker compose up --build
+Это поднимет контейнеры с сервисом, Kafka и PostgreSQL.
+
+## HTTP API
+Получить заказ:
+
+    GET /order/{order_uid}
+Пример:
+
+    curl http://localhost:8082/order/OOBmrfkDRphyYFiH
+
+## Статичная HTML-страница
+Открыть /info/ или (при нужной конфигурации) /order.html в браузере, чтобы воспользоваться веб-интерфейсом поиска заказа.
+## Структура проекта
+    ├── cmd/
+    │   └── myapp/          # main.go — точка входа
+    ├── internal/
+    │   ├── app/            # Жизненный цикл приложения
+    │   ├── api/            # HTTP API и маршруты
+    │   ├── repository/     # Работа с БД, Kafka, Cache
+    │   ├── model/          # модели данных
+    ├── web/                # фронтенд
+    ├── Dockerfile
+    ├── docker-compose.yml
+    ├── .env.example
+    └── README.md
