@@ -55,6 +55,7 @@
     ├── cmd/
     │   └── myapp/          # main.go — точка входа
     ├── internal/
+    │   ├── config/         # Настройки приложения
     │   ├── app/            # Жизненный цикл приложения
     │   ├── api/            # HTTP API и маршруты
     │   ├── repository/     # Работа с БД, Kafka, Cache
