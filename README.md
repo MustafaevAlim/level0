@@ -61,6 +61,8 @@
     │   ├── repository/     # Работа с БД, Kafka, Cache
     │   ├── model/          # модели данных
     ├── web/                # фронтенд
+    ├── scripts/            # скрипты(имитация записи сообщений в кафку)
+    ├── vendor/             # зависимости
     ├── Dockerfile
     ├── docker-compose.yml
     ├── .env.example
