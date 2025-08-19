@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Level0/internal/config"
 	"Level0/internal/model"
 	"Level0/internal/repository"
 	"context"
@@ -22,6 +23,7 @@ func NewApp(db *repository.Storage, cache *repository.LRUcache, kafka *repositor
 }
 
 func (a *App) Run(ctx context.Context) error {
+	conf := config.New()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -55,7 +57,7 @@ func (a *App) Run(ctx context.Context) error {
 
 	server := &http.Server{
 		Handler: a.Router,
-		Addr:    ":8082",
+		Addr:    ":" + conf.Server.Port,
 	}
 
 	go func() {

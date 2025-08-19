@@ -25,7 +25,8 @@ type LRUcache struct {
 
 func NewLRUCache(cap int, db *Storage) *LRUcache {
 	if cap <= 0 {
-		panic("Кэш не может быть меньше нуля")
+		log.Println("Кеш не может быть 0 или меньше, инициализация дейфолтным размером")
+		cap = 100
 	}
 	head := new(Node)
 	tail := new(Node)
