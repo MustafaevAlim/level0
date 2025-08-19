@@ -8,7 +8,7 @@
 
 ## Технологии
  - Golang
- - Kafka (segmentio/kafka-go)
+ - Kafka (segmentio/kafka-go), Kafka UI
  - PostgreSQL (sqlx)
  - Docker, Docker Compose
  - HTML+JS (frontend)
@@ -32,7 +32,14 @@
 
    ### Запуск через Docker Compose
     docker compose up --build
-Это поднимет контейнеры с сервисом, Kafka и PostgreSQL.
+
+Это поднимет контейнеры с сервисом, Kafka, Kafka UI и PostgreSQL.
+
+Создать топик в кафке (настроить по желанию):
+
+    docker exec -it kafka /bin/bash # войти в контейнер с кафкой 
+    kafka-topics --create --topic orders-topic --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
 
 ## HTTP API
 Получить заказ:
