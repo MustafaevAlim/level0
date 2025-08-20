@@ -63,59 +63,6 @@ func (s *Storage) AddOrder(ctx context.Context, order model.Order) error {
 	return tx.Commit()
 }
 
-func insertOrder(ctx context.Context, tx *sqlx.Tx, order *model.Order) error {
-	_, err := tx.NamedExecContext(ctx,
-		`INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, customer_id, delivery_service,
-         shardkey, sm_id, date_created, oof_shard)
-         VALUES (:order_uid, :track_number, :entry, :locale, :internal_signature, :customer_id, :delivery_service,
-         :shardkey, :sm_id, :date_created, :oof_shard)`,
-		order)
-	if err != nil {
-		return fmt.Errorf("ошибка при вставке заказа: %w", err)
-	}
-	return nil
-}
-
-func insertDelivery(ctx context.Context, tx *sqlx.Tx, delivery *model.Delivery, orderUID string) error {
-	delivery.OrderUid = orderUID
-	_, err := tx.NamedExecContext(ctx,
-		`INSERT INTO deliverys (order_uid, name, phone, zip, city, address, region, email)
-         VALUES (:order_uid, :name, :phone, :zip, :city, :address, :region, :email)`,
-		delivery)
-	if err != nil {
-		return fmt.Errorf("ошибка при вставке доставки: %w", err)
-	}
-	return nil
-}
-
-func insertPayment(ctx context.Context, tx *sqlx.Tx, payment *model.Payment, orderUID string) error {
-	payment.OrderUid = orderUID
-	_, err := tx.NamedExecContext(ctx,
-		`INSERT INTO payments (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank,
-         delivery_cost, goods_total, custom_fee)
-         VALUES (:order_uid, :transaction, :request_id, :currency, :provider, :amount, :payment_dt, :bank,
-         :delivery_cost, :goods_total, :custom_fee)`,
-		payment)
-	if err != nil {
-		return fmt.Errorf("ошибка при вставке оплаты: %w", err)
-	}
-	return nil
-}
-
-func insertItems(ctx context.Context, tx *sqlx.Tx, items []model.Item, orderUID string) error {
-	for i := range items {
-		items[i].OrderUid = orderUID
-	}
-	_, err := tx.NamedExecContext(ctx,
-		`INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
-         VALUES (:order_uid, :chrt_id, :track_number, :price, :rid, :name, :sale, :size, :total_price, :nm_id, :brand, :status)`,
-		items)
-	if err != nil {
-		return fmt.Errorf("ошибка при вставке позиций: %w", err)
-	}
-	return nil
-}
-
 func (s *Storage) SelectOrders(ctx context.Context, count int) ([]model.Order, error) {
 	orders := make([]model.Order, 0, count)
 	err := s.db.SelectContext(
@@ -205,4 +152,57 @@ func (s *Storage) loadOrderItems(ctx context.Context, uid string) ([]model.Item,
 		return nil, fmt.Errorf("ошибка при чтении позиций заказа: %w", err)
 	}
 	return items, nil
+}
+
+func insertOrder(ctx context.Context, tx *sqlx.Tx, order *model.Order) error {
+	_, err := tx.NamedExecContext(ctx,
+		`INSERT INTO orders (order_uid, track_number, entry, locale, internal_signature, customer_id, delivery_service,
+         shardkey, sm_id, date_created, oof_shard)
+         VALUES (:order_uid, :track_number, :entry, :locale, :internal_signature, :customer_id, :delivery_service,
+         :shardkey, :sm_id, :date_created, :oof_shard)`,
+		order)
+	if err != nil {
+		return fmt.Errorf("ошибка при вставке заказа: %w", err)
+	}
+	return nil
+}
+
+func insertDelivery(ctx context.Context, tx *sqlx.Tx, delivery *model.Delivery, orderUID string) error {
+	delivery.OrderUid = orderUID
+	_, err := tx.NamedExecContext(ctx,
+		`INSERT INTO deliverys (order_uid, name, phone, zip, city, address, region, email)
+         VALUES (:order_uid, :name, :phone, :zip, :city, :address, :region, :email)`,
+		delivery)
+	if err != nil {
+		return fmt.Errorf("ошибка при вставке доставки: %w", err)
+	}
+	return nil
+}
+
+func insertPayment(ctx context.Context, tx *sqlx.Tx, payment *model.Payment, orderUID string) error {
+	payment.OrderUid = orderUID
+	_, err := tx.NamedExecContext(ctx,
+		`INSERT INTO payments (order_uid, transaction, request_id, currency, provider, amount, payment_dt, bank,
+         delivery_cost, goods_total, custom_fee)
+         VALUES (:order_uid, :transaction, :request_id, :currency, :provider, :amount, :payment_dt, :bank,
+         :delivery_cost, :goods_total, :custom_fee)`,
+		payment)
+	if err != nil {
+		return fmt.Errorf("ошибка при вставке оплаты: %w", err)
+	}
+	return nil
+}
+
+func insertItems(ctx context.Context, tx *sqlx.Tx, items []model.Item, orderUID string) error {
+	for i := range items {
+		items[i].OrderUid = orderUID
+	}
+	_, err := tx.NamedExecContext(ctx,
+		`INSERT INTO items (order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status)
+         VALUES (:order_uid, :chrt_id, :track_number, :price, :rid, :name, :sale, :size, :total_price, :nm_id, :brand, :status)`,
+		items)
+	if err != nil {
+		return fmt.Errorf("ошибка при вставке позиций: %w", err)
+	}
+	return nil
 }
