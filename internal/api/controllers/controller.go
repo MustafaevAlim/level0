@@ -1,8 +1,6 @@
 package controllers
 
-import (
-	"Level0/internal/repository"
-)
+import "level0/internal/repository"
 
 // В принципе можно использовать только кеш, бд на будущее пусть будет
 type Controller struct {

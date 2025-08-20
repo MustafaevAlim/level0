@@ -33,6 +33,17 @@
    ### Запуск через Docker Compose
     docker compose up --build
 
+Чтобы управлять миграциями локально нужно скачать migrate:
+
+    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.15.2/migrate.linux-amd64.tar.gz \
+    | tar xvz -C /usr/local/bin
+
+Используется makefile:
+
+    make migrate-up # применить миграции
+    make migrate-down # отменить миграции
+    make migrate-version # посмотреть версию миграции
+
 Это поднимет контейнеры с сервисом, Kafka, Kafka UI и PostgreSQL.
 
 Создать топик в кафке (настроить по желанию):

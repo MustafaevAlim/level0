@@ -65,6 +65,15 @@ type Item struct {
 	Status      int    `json:"status"`
 }
 
+func generateStringInt(n int) string {
+	digits := "0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = digits[rand.Intn(len(digits))]
+	}
+	return string(b)
+}
+
 func generateRandomString(n int) string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 	b := make([]rune, n)
@@ -88,14 +97,14 @@ func generateRandomOrder() Order {
 		InternalSignature: generateRandomString(3),
 		CustomerID:        generateRandomString(6),
 		DeliveryService:   generateRandomString(5),
-		ShardKey:          "9",
+		ShardKey:          generateStringInt(2),
 		SmID:              rand.Intn(1000),
 		DateCreated:       now,
-		OofShard:          "1",
+		OofShard:          generateStringInt(2),
 		Delivery: Delivery{
 			Name:    generateRandomString(6),
 			Phone:   randomPhone(),
-			Zip:     generateRandomString(6),
+			Zip:     generateStringInt(5),
 			City:    generateRandomString(14),
 			Address: generateRandomString(10),
 			Region:  generateRandomString(6),
@@ -119,7 +128,7 @@ func generateRandomOrder() Order {
 			Price:       rand.Intn(1_000_000),
 			Rid:         generateRandomString(16),
 			Name:        generateRandomString(6),
-			Sale:        rand.Intn(1_000_000),
+			Sale:        rand.Intn(101),
 			Size:        generateRandomString(2),
 			TotalPrice:  rand.Intn(1_000_000),
 			NmID:        rand.Intn(1_000_000),
@@ -134,13 +143,17 @@ func WriteInKafka() {
 		Brokers: []string{"kafka:9092"},
 		Topic:   "orders-topic",
 	})
-	defer writer.Close()
+	defer func() {
+		if err := writer.Close(); err != nil {
+			log.Println("Ошибка при закрытии соединения продюсера с Кафкой: ", err)
+		}
+	}()
+
 	for {
 		order := generateRandomOrder()
 		data, err := json.Marshal(order)
 		if err != nil {
 			log.Fatalln("Ошибка в генерации тестовых данных: ", err)
-			break
 		}
 
 		err = writer.WriteMessages(context.Background(), kafka.Message{

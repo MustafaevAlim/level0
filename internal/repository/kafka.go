@@ -1,15 +1,32 @@
 package repository
 
 import (
-	"Level0/internal/model"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/go-playground/validator"
 	"github.com/segmentio/kafka-go"
+
+	"level0/internal/model"
 )
+
+func RegisterDateTimeValidation(validate *validator.Validate) {
+	err := validate.RegisterValidation("notzero", func(fl validator.FieldLevel) bool {
+		t, ok := fl.Field().Interface().(time.Time)
+		if !ok {
+			return false
+		}
+		return !t.IsZero()
+	})
+	if err != nil {
+		log.Println("Ошибка регистрации валидации времени")
+	}
+
+}
 
 type KafkaReader struct {
 	Reader *kafka.Reader
@@ -27,8 +44,10 @@ func NewKafkaReader(brokers []string, topic string, groupId string) *KafkaReader
 
 func (r *KafkaReader) Consume(ctx context.Context, ch chan model.OrderMsg) error {
 
-	defer r.Reader.Close()
 	defer close(ch)
+
+	validate := validator.New()
+	RegisterDateTimeValidation(validate)
 
 	for {
 		msg, err := r.Reader.ReadMessage(ctx)
@@ -46,6 +65,13 @@ func (r *KafkaReader) Consume(ctx context.Context, ch chan model.OrderMsg) error
 			log.Printf("Кафка: ошибка десериализации: %v", err)
 			continue
 		}
+
+		err = validate.Struct(data)
+		if err != nil {
+			log.Printf("Кафка: ошибка валидации данных: %v", err)
+			continue
+		}
+
 		log.Printf("Кафка: получен заказ с айди %s", data.OrderUID)
 
 		select {

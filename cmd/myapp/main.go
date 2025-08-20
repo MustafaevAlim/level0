@@ -1,12 +1,6 @@
 package main
 
 import (
-	"Level0/internal/api"
-	"Level0/internal/api/controllers"
-	"Level0/internal/app"
-	"Level0/internal/config"
-	"Level0/internal/repository"
-	"Level0/scripts"
 	"context"
 	"log"
 	"os"
@@ -14,6 +8,13 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+
+	"level0/internal/api"
+	"level0/internal/api/controllers"
+	"level0/internal/app"
+	"level0/internal/config"
+	"level0/internal/repository"
+	"level0/scripts"
 )
 
 // Загрузка переменных окружения
@@ -23,6 +24,7 @@ func init() {
 	}
 }
 
+// Где DEPRECATED методы я так и не понял(
 func main() {
 	go scripts.WriteInKafka()
 	conf := config.New()

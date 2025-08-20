@@ -1,13 +1,15 @@
 package app
 
 import (
-	"Level0/internal/config"
-	"Level0/internal/model"
-	"Level0/internal/repository"
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"sync"
+
+	"level0/internal/config"
+	"level0/internal/model"
+	"level0/internal/repository"
 )
 
 type App struct {
@@ -47,6 +49,8 @@ func (a *App) Run(ctx context.Context) error {
 				continue
 			}
 
+			a.Cache.Push(orderMsg.Order)
+
 			if err := a.Kafka.Reader.CommitMessages(ctx, orderMsg.Msg); err != nil {
 				log.Printf("Не удалось закоммитить offset: %v", err)
 
@@ -61,7 +65,7 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("HTTP error: %v", err)
 			cancel()
 		}
@@ -71,8 +75,18 @@ func (a *App) Run(ctx context.Context) error {
 	log.Println("Завершение программы...")
 	wg.Wait()
 
-	server.Shutdown(context.Background())
-	a.DB.Close()
+	err := server.Shutdown(context.Background())
+	if err != nil {
+		log.Println("Ошибка при остановки сервера: ", err)
+	}
+	err = a.DB.Close()
+	if err != nil {
+		log.Println("Ошибка при закрытии соединения с БД: ", err)
+	}
+	err = a.Kafka.Reader.Close()
+	if err != nil {
+		log.Println("Ошибка при закрытии соединения с Кафкой: ", err)
+	}
 	return nil
 
 }

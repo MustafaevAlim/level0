@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 )
@@ -47,7 +48,7 @@ func New() *Config {
 			KafkaConsumerGroup: getEnv("KAFKA_GROUP", "grp1"),
 		},
 		Cache: CacheConfig{
-			CacheSize: getIntEnv("CACHE_SIZE", "100"),
+			CacheSize: getIntEnv("CACHE_SIZE", 100),
 		},
 		Server: ServerConfig{
 			Port: getEnv("HTTP_PORT", "8082"),
@@ -62,11 +63,11 @@ func getEnv(key string, defaultValue string) string {
 	return defaultValue
 }
 
-func getIntEnv(key string, defaulValue string) int {
-	n, err := strconv.Atoi(getEnv(key, defaulValue))
+func getIntEnv(key string, defaulValue int) int {
+	n, err := strconv.Atoi(getEnv(key, "100"))
 	if err != nil {
-		def, _ := strconv.Atoi(defaulValue)
-		return def
+		log.Println("Ошибка в получении int значения из .env")
+		return defaulValue
 	}
 	return n
 }

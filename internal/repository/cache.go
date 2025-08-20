@@ -1,10 +1,11 @@
 package repository
 
 import (
-	"Level0/internal/model"
 	"context"
 	"log"
 	"sync"
+
+	"level0/internal/model"
 )
 
 type Node struct {
@@ -25,7 +26,7 @@ type LRUcache struct {
 
 func NewLRUCache(cap int, db *Storage) *LRUcache {
 	if cap <= 0 {
-		log.Println("Кеш не может быть 0 или меньше, инициализация дейфолтным размером")
+		log.Println("Кеш не может быть 0 или меньше, инициализация дефолтным размером")
 		cap = 100
 	}
 	head := new(Node)
@@ -50,26 +51,32 @@ func NewLRUCache(cap int, db *Storage) *LRUcache {
 
 	for _, order := range orders {
 
-		cache.push(order)
+		cache.Push(order)
 	}
 	return cache
 }
 
-func (c *LRUcache) push(v model.Order) error {
+func (c *LRUcache) Push(v model.Order) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if node, ok := c.cache[v.OrderUID]; ok {
 		node.value = v
 		c.moveToFront(node)
-		return nil
+		return
 	}
+
 	if len(c.cache) == c.capacity {
 		back := c.tail.prev
-		c.remove(back)
-		delete(c.cache, back.key)
+		if back != nil && back != c.head {
+			c.remove(back)
+			delete(c.cache, back.key)
+		}
 	}
+
 	node := &Node{key: v.OrderUID, value: v}
 	c.cache[v.OrderUID] = node
 	c.pushToFront(node)
-	return nil
 }
 
 func (c *LRUcache) Get(ctx context.Context, uid string) (*model.Order, error) {
@@ -93,9 +100,8 @@ func (c *LRUcache) Get(ctx context.Context, uid string) (*model.Order, error) {
 		return nil, nil
 	}
 
-	c.mu.Lock()
-	c.push(*order)
-	c.mu.Unlock()
+	c.Push(*order)
+
 	return order, nil
 }
 

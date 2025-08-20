@@ -1,11 +1,12 @@
 package controllers
 
 import (
-	"Level0/internal/model"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
+
+	"level0/internal/model"
 )
 
 func (c *Controller) GetOrder(w http.ResponseWriter, r *http.Request) {
