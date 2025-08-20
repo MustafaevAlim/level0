@@ -72,9 +72,11 @@
     │   ├── repository/     # Работа с БД, Kafka, Cache
     │   ├── model/          # модели данных
     ├── web/                # фронтенд
+    ├── migrations/         # миграции БД
     ├── scripts/            # скрипты(имитация записи сообщений в кафку)
     ├── vendor/             # зависимости
     ├── Dockerfile
     ├── docker-compose.yml
     ├── .env.example
+    ├── Makefile
     └── README.md
